@@ -70,7 +70,7 @@ void usage(int argc, char * argv[])
  */
  void printErr()
  {
-    printf("usage: csim.c [-hv] -s <num> -E <num> -b <num> -t <file>\n");
+    printf("usage: csim [-hv] -s <num> -E <num> -b <num> -t <file>\n");
     printf(" Options: \n");
     printf("  -h         Print this help message.\n");
     printf("  -v         Optional verbose flag.\n");
