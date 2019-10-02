@@ -7,29 +7,26 @@
 #include <getopt.h>
 
 char * filename;
-int sval, bval, eval;
+struct cacheDefinition {
+    int sval, eval, bval, numSets, blockSize;
+    unsigned long ** tags;    
+} cache;
 
-void usage(int argc, char * argv[]);
+void parse(int argc, char * argv[]);
+void init();
 void printErr();
 
 int main(int argc, char * argv[])
 { 
-    usage(argc, argv);
+    parse(argc, argv);
     
     printSummary(0, 0, 0);
     return 0;
 }
 
+
 /*
- * loader
- *
- */
- void loader()
- {
-    printf("**************\nParse Succesfull\n********\n\n");
- }
-/*
- * usage
+ * parse
  *
  * parses the command line arguments 
  *
@@ -38,7 +35,7 @@ int main(int argc, char * argv[])
  * param: string & filename - set to the name of the text file to be 
  *                            used for input
  */
-void usage(int argc, char * argv[])
+void parse(int argc, char * argv[])
 {
     int c; 
     opterr = 0;
@@ -52,13 +49,13 @@ void usage(int argc, char * argv[])
       case 'v':
         break;
       case 's':
-        sval = atoi(optarg);
+        cache.sval = atoi(optarg);
         break;
       case 'E':
-        eval = atoi(optarg);
+        cache.eval = atoi(optarg);
         break;
       case 'b':
-        bval = atoi(optarg);
+        cache.bval = atoi(optarg);
         break;
       case 't':
         filename = optarg;;
@@ -70,11 +67,20 @@ void usage(int argc, char * argv[])
         abort();
     }
     
-    if (sval == 0 || eval == 0 || bval == 0)
+    if (cache.sval == 0 || cache.eval == 0 || cache.bval == 0)
         printErr(argv);
     else
-    loader();
+    init();
 }
+
+/*
+ * init
+ *
+ */
+ void init()
+ {
+    printf("**************\nParse Succesfull\n********\n\n");
+ }
 
 /*
  * printErr
@@ -82,7 +88,7 @@ void usage(int argc, char * argv[])
  */
  void printErr()
  {
-    printf("usage: csim [-hv] -s <num> -E <num> -b <num> -t <file>\n");
+    printf("parse: csim [-hv] -s <num> -E <num> -b <num> -t <file>\n");
     printf(" Options: \n");
     printf("  -h         Print this help message.\n");
     printf("  -v         Optional verbose flag.\n");
