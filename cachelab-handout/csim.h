@@ -6,7 +6,9 @@
 #include <string.h>
 #include <getopt.h>
 
+char * filename;
+int sval, bval, eval;
 
-void usage(int argc, char * argv[], char * filename);
-void printErr(char * argv[]);
+void usage(int argc, char * argv[]);
+void printErr();
 

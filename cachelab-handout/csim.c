@@ -1,11 +1,8 @@
 #include "csim.h"
 
 int main(int argc, char * argv[])
-{
-    
-    char filename[10] = "File.txt";
-    
-    usage(argc, argv, filename);
+{ 
+    usage(argc, argv);
     
     printSummary(0, 0, 0);
     return 0;
@@ -15,7 +12,7 @@ int main(int argc, char * argv[])
  * loader
  *
  */
- void loader(int sval, int eval, int bval)
+ void loader()
  {
     printf("**************\nParse Succesfull\n********\n\n");
  }
@@ -29,10 +26,9 @@ int main(int argc, char * argv[])
  * param: string & filename - set to the name of the text file to be 
  *                            used for input
  */
-void usage(int argc, char * argv[], char * filename)
+void usage(int argc, char * argv[])
 {
-    int c, sval, eval, bval; 
-
+    int c; 
     opterr = 0;
 
     while ((c = getopt (argc, argv, "hvs:E:b:t:")) != -1)
@@ -65,16 +61,16 @@ void usage(int argc, char * argv[], char * filename)
     if (sval == 0 || eval == 0 || bval == 0)
         printErr(argv);
     else
-    loader(sval, eval, bval);
+    loader();
 }
 
 /*
  * printErr
  *
  */
- void printErr(char * argv[])
+ void printErr()
  {
-    printf("usage: %s [-hv] -s <num> -E <num> -b <num> -t <file>\n", argv[0]);
+    printf("usage: csim.c [-hv] -s <num> -E <num> -b <num> -t <file>\n");
     printf(" Options: \n");
     printf("  -h         Print this help message.\n");
     printf("  -v         Optional verbose flag.\n");
