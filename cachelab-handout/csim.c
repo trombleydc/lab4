@@ -1,12 +1,4 @@
-#include "cachelab.h"
-#include <ctype.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <getopt.h>
-
-void usage(int argc, char * argv[], char * filename);
+#include "csim.h"
 
 int main(int argc, char * argv[])
 {
@@ -23,9 +15,9 @@ int main(int argc, char * argv[])
  * loader
  *
  */
- void loader(int sValue, int eValue, int bValue, int tValue;)
+ void loader(int sval, int eval, int bval)
  {
-    printf("I HATE C!");
+    printf("**************\nParse Succesfull\n********\n\n");
  }
 /*
  * usage
@@ -33,14 +25,13 @@ int main(int argc, char * argv[])
  * parses the command line arguments 
  *
  * param: int argc - number of command line arguments
- * param: char * argv[] - command line arguments
- * param: int & ngrams - set to the command line arguments (default 2)
+ * param: char * argv[] - command line arguments 
  * param: string & filename - set to the name of the text file to be 
  *                            used for input
  */
 void usage(int argc, char * argv[], char * filename)
 {
-    int c, sValue, eValue, bValue, tValue;
+    int c, sval, eval, bval; 
 
     opterr = 0;
 
@@ -48,38 +39,42 @@ void usage(int argc, char * argv[], char * filename)
     switch (c)
     {
       case 'h':
-        printError(argv[0]);
+        printErr(argv);
         break;
       case 'v':
         break;
       case 's':
-        sValue = optarg;
+        sval = atoi(optarg);
         break;
       case 'E':
-        eValue = optarg;
+        eval = atoi(optarg);
         break;
       case 'b':
-        bValue = optarg;
+        bval = atoi(optarg);
         break;
       case 't':
-        tValue = optarg;
+        filename = optarg;;
         break;  
       case '?':
-        printError(argv[0]);
-        return 1;
+        printErr(argv);
+        break;
       default:
         abort();
     }
-    loader(sValue, eValue, bValue, tValue);
+    
+    if (sval == 0 || eval == 0 || bval == 0)
+        printErr(argv);
+    else
+    loader(sval, eval, bval);
 }
 
 /*
- * printError
+ * printErr
  *
  */
- void printError(char * argv[])
+ void printErr(char * argv[])
  {
-    printf("usage: " + argv[0] + " [-hv] -s <num> -E <num> -b <num> -t <file>\n");
+    printf("usage: %s [-hv] -s <num> -E <num> -b <num> -t <file>\n", argv[0]);
     printf(" Options: \n");
     printf("  -h         Print this help message.\n");
     printf("  -v         Optional verbose flag.\n");
