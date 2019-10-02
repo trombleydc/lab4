@@ -18,10 +18,48 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
  *     the description string "Transpose submission", as the driver
  *     searches for that string to identify the transpose function to
  *     be graded. 
+ *	   
+ *	   Marc Settin - settinmf
+ *     Daniel Trombley - trombleydc
  */
 char transpose_submit_desc[] = "Transpose submission";
 void transpose_submit(int M, int N, int A[N][M], int B[M][N])
 {
+	int i, j, tmp;
+
+    //output 1
+	if ((M == 32) && (N == 32))
+	{
+		for (i = 0; i < N; i++) {
+			for (j = 0; j < M; j++) {
+				tmp = A[i][j];
+				B[j][i] = tmp;
+			}
+		}  
+	}
+	//output 2
+	if ((M == 64) && (N == 64))
+	{
+		for (i = 0; i < N; i++) {
+			for (j = 0; j < M; j++) {
+				tmp = A[i][j];
+				B[j][i] = tmp;
+			}
+		}  
+	}
+	//output 3
+	if ((M == 61) && (N == 67))
+	{
+		for (i = 0; i < N; i++) {
+			for (j = 0; j < M; j++) {
+				tmp = A[i][j];
+				B[j][i] = tmp;
+			}
+		}  
+	}
+	//Preform the best overall transpose  
+	else
+	printf("out");
 }
 
 /* 
@@ -46,6 +84,29 @@ void trans(int M, int N, int A[N][M], int B[M][N])
 
 }
 
+/* 
+ * trans_in_place - RAM model
+ */
+char trans_in_place_desc[] = "In place Transpose";
+void trans_in_place(int M, int N, int A[N][M], int B[M][N])
+{
+    int i, j, k, tmp;
+
+    for (k = 0; k < N; k++) 
+	{
+        for (j = 0; j < N; j++) 		
+		{
+			tmp = B[k][j];
+        
+			for (i=0; i < N; i++)
+			{
+				B[i][j] += A[i][k] * tmp;
+			}
+		}
+    }    
+
+}
+
 /*
  * registerFunctions - This function registers your transpose
  *     functions with the driver.  At runtime, the driver will
@@ -60,6 +121,9 @@ void registerFunctions()
 
     /* Register any additional transpose functions */
     registerTransFunction(trans, trans_desc); 
+	
+	/* Register any additional transpose functions */
+    registerTransFunction(trans_in_place, trans_in_place_desc); 
 
 }
 
