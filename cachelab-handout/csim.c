@@ -38,10 +38,10 @@ void init(struct Cache * cache);
 void go(char * filename, struct Cache * cache);
 
 //
-char * handleTag();
+char * handleTag(struct Cache * cache, unsigned long addr);
 
 //
-unsigned long getBits(char startBit, char endBit, char * addrStr);
+unsigned long getBits(char startBit, char endBit, unsigned long addr);
 
 //
 void printVerbose();
@@ -114,10 +114,7 @@ void usage(int argc, char * argv[], char * filename, struct Cache * cache)
         }
 
     if ((*cache).sval == 0 || (*cache).eval == 0 || (*cache).bval == 0 || filename[0] == 0)
-        printErr(argv);  
-    //print success for testing
-    else
-        printf("**************\nParse Succesfull\n********\n\n"); 
+        printErr(argv);   
 }
 
 /*
@@ -138,18 +135,7 @@ void init(struct Cache * cache)
     for (i = 0; i < (*cache).numSets; i++)
         for (j = 0; j < (*cache).eval; j++)
             (*cache).tags[i][j] = -1;
-
-    //print struct for testing
-    printf("**************\nsval: %d\neval: %d\nbval: %d\nnumSets: %d\nblockSize: %d\ntags:\n",
-            (*cache).sval, (*cache).eval, (*cache).bval, (*cache).numSets, (*cache).blockSize);
-    for (i = 0; i < (*cache).numSets; i++) { 
-        for (j = 0; j < (*cache).eval; j++) {
-            printf("%lu ", (*cache).tags[i][j]);
-        }
-        printf("\n");
     }
-
-}
 
 /*
  * go
@@ -157,58 +143,53 @@ void init(struct Cache * cache)
 void go(char * filename, struct Cache * cache) {
     FILE * file;
     char buf[80];
-
     file = fopen(filename, "r");
     if (file == NULL) {
         perror("Error opening trace file");
         exit(0);
     }
-    else printf("\n\n\nFile open successful :\n");
 
     char inst;
-    char addrStr[8] = ""; 
-    unsigned long block, set, tag;
-    int i, j;
-    bool hit == false;
+    char status[13], mStat[13], len[4] = ""; 
+    unsigned long addr;
 
     while (fgets(buf, 80, file) != NULL) {
-        if (buf[0] == ' '){
-
-
-            sscanf(buf, " %c %s,", &inst, addrStr);
-
-
-
+        if (buf[0] == ' '){ 
+            strcpy(mStat, "");
+            sscanf(buf, " %c %lu,%s", &inst, &addr, len);
+            strcpy(status, handleTag( cache, addr));
+            if (inst == 'M')
+                strcpy(mStat, handleTag(cache, addr));
             if (vflag) {
-                printf("%s", &buf[1]); 
+                printf("%c %lu,%s %s %s\n", inst, addr, len, status, mStat); 
             }
         }
     }
-    printf("\n\n");
-
     fclose(file);
 }
 
-char * handleTag() {
-    set = getBits((*cache).bval + 1, (*cache).bval + (*cache).sval, addrStr);
-    tag = getBits((*cache).bval + (*cache).sval + 1, sizeof(unsigned long) - 1, addrStr);
+char * handleTag(struct Cache * cache, unsigned long addr) {
+    int j, k;
 
-    for(i = 0; i < set; i++) {
-        if ((*cache).tag[set][i] == tag) {
-            hit == true;
-        } else if ((*cache).tag[set][i] == -1) {
-            for (j = i; j > 0; j--) {
-                (*cache).tag[set][j] = (*cache).tag[set][j - 1];
+    unsigned long set = getBits((*cache).bval - 1, (*cache).bval + (*cache).sval - 1, addr);
+    unsigned long tag = getBits((*cache).bval + (*cache).sval - 1, sizeof(unsigned long) - 1, addr);
+
+    for (j = 0; j < (*cache).eval; j++) {
+        if ((*cache).tags[set][j] == tag) {
+            return "hit";
+        } else if ((*cache).tags[set][j] == -1) {
+            for (k = j; k > 0; k--) {
+                (*cache).tags[set][k] = (*cache).tags[set][k - 1];
             }
-            (*cache).tag[set][0] = tag;
+            (*cache).tags[set][0] = tag; 
         }
     }
-}
+    return "miss";
 }
 
-unsigned long getBits(char startBit, char endBit, char * addrStr) {
+unsigned long getBits(char startBit, char endBit, unsigned long addr) {
     char totalBits = sizeof(unsigned long) * 8;
-    return strtoul(addrStr, NULL, 16) <<  (totalBits - endBit) >> (totalBits - endBit + startBit); 
+    return addr <<  (totalBits - endBit) >> (totalBits - endBit + startBit); 
 }
 
 /*
