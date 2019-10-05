@@ -19,7 +19,8 @@
 
 struct Cache {
     int sval, eval, bval, numSets, blockSize;
-    unsigned long ** tags;    
+    unsigned long ** tags;   
+    int hits, misses, evictions; 
 };
 
 //global Variable - verbose flag
@@ -44,6 +45,9 @@ char * handleTag(struct Cache * cache, unsigned long addr);
 unsigned long getBits(char startBit, char endBit, unsigned long addr);
 
 //
+void insertTag(int * j, int * k, struct Cache * cache, unsigned long set, unsigned long tag);
+
+//
 void printVerbose();
 
 //prints error for invalid command line arguements 
@@ -65,7 +69,7 @@ int main(int argc, char * argv[])
     init(&cache);
     go(filename, &cache);
 
-    printSummary(0, 0, 0);
+    printSummary(cache.hits, cache.misses, cache.evictions);
     return 0;
 }
 
@@ -123,6 +127,11 @@ void usage(int argc, char * argv[], char * filename, struct Cache * cache)
  */
 void init(struct Cache * cache)
 {
+
+    (*cache).hits = 0;
+    (*cache).misses = 0;
+    (*cache).evictions=0;
+
     (*cache).numSets = 1 << (*cache).sval;
     (*cache).blockSize = 1 << (*cache).bval;
 
@@ -135,7 +144,7 @@ void init(struct Cache * cache)
     for (i = 0; i < (*cache).numSets; i++)
         for (j = 0; j < (*cache).eval; j++)
             (*cache).tags[i][j] = -1;
-    }
+}
 
 /*
  * go
@@ -149,19 +158,20 @@ void go(char * filename, struct Cache * cache) {
         exit(0);
     }
 
-    char inst;
-    char status[13], mStat[13], len[4] = ""; 
+    char inst, len;
+    char status[13], mStat[13], addrStr[8] = ""; 
     unsigned long addr;
 
     while (fgets(buf, 80, file) != NULL) {
         if (buf[0] == ' '){ 
             strcpy(mStat, "");
-            sscanf(buf, " %c %lu,%s", &inst, &addr, len);
+            sscanf(buf, " %c %s,%c", &inst, addrStr, &len);
+            addr = strtoul(addrStr, NULL, 16); 
             strcpy(status, handleTag( cache, addr));
             if (inst == 'M')
                 strcpy(mStat, handleTag(cache, addr));
             if (vflag) {
-                printf("%c %lu,%s %s %s\n", inst, addr, len, status, mStat); 
+                printf("%c %s %c%s %s\n", inst, addrStr, len, status, mStat); 
             }
         }
     }
@@ -170,26 +180,46 @@ void go(char * filename, struct Cache * cache) {
 
 char * handleTag(struct Cache * cache, unsigned long addr) {
     int j, k;
-
-    unsigned long set = getBits((*cache).bval - 1, (*cache).bval + (*cache).sval - 1, addr);
-    unsigned long tag = getBits((*cache).bval + (*cache).sval - 1, sizeof(unsigned long) - 1, addr);
-
-    for (j = 0; j < (*cache).eval; j++) {
-        if ((*cache).tags[set][j] == tag) {
+    char totalBits = sizeof(unsigned long) * 8 ;
+    unsigned long set = addr >> (*cache).bval << (totalBits - (*cache).sval) >> (totalBits - (*cache).sval);
+    unsigned long tag = addr >> ((*cache).sval + (*cache).bval);
+    for (j = 0; j < (*cache).eval; j++) { 
+        if ((*cache).tags[set][j] == tag) {  
+            (*cache).hits += 1;
             return "hit";
-        } else if ((*cache).tags[set][j] == -1) {
-            for (k = j; k > 0; k--) {
-                (*cache).tags[set][k] = (*cache).tags[set][k - 1];
-            }
-            (*cache).tags[set][0] = tag; 
+        }
+        if ((*cache).tags[set][j] == -1) { 
+            insertTag(&j, &k, cache, set, tag);
+            (*cache).misses += 1;
+            return "miss";      
         }
     }
-    return "miss";
+    insertTag(&j, &k, cache, set, tag);
+    (*cache).misses += 1;
+    (*cache).evictions += 1;
+    return "miss eviction"; 
 }
 
-unsigned long getBits(char startBit, char endBit, unsigned long addr) {
-    char totalBits = sizeof(unsigned long) * 8;
-    return addr <<  (totalBits - endBit) >> (totalBits - endBit + startBit); 
+
+/*
+   unsigned long getBitsSet(char startBit, char endBit, unsigned long addr) {
+   return addr >> startBit <<  (totalBits - endBit + startBit) >> (totalBits - endBit + startBit); 
+   }
+
+   unsigned long getBitsTag(char startBit, char endBit, char totalBits, unsigned long addr) {
+   return addr 
+   }
+   */
+/*
+ * insertTag
+ */
+void insertTag(int * j, int * k, struct Cache * cache, unsigned long set, unsigned long tag) {
+    *k = 0;
+    for (*k = *j; *k  >= 0; (*k)--) {
+        (*cache).tags[set][*k] = (*cache).tags[set][*k - 1];
+    }
+    (*cache).tags[set][0] = tag; 
+
 }
 
 /*
