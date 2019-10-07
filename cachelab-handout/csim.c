@@ -35,20 +35,14 @@ void usage(int argc, char * argv[], char * filename, struct Cache * cache);
 //initializes remaining empty cache data
 void init(struct Cache * cache);
 
-//parses & handles file data
+//reads, parses, & handles file data
 void go(char * filename, struct Cache * cache);
 
-//
+//processes address, inserts tag, and handles hit/miss/eviction
 char * handleTag(struct Cache * cache, unsigned long addr);
 
-//
-unsigned long getBits(char startBit, char endBit, unsigned long addr);
-
-//
-void insertTag(int * j, int * k, struct Cache * cache, unsigned long set, unsigned long tag);
-
-//
-void printVerbose();
+//inserts tag in LRU order
+void insertTag(int j, struct Cache * cache, unsigned long set, unsigned long tag);
 
 //prints error for invalid command line arguements 
 void printErr();
@@ -60,6 +54,12 @@ void printErr();
 
 /*
  * main
+ *
+ * entry point for program - declares cache, parses command line arguemnts, initializes cache,
+ * processes file, and calls printSummary
+ *
+ * param: int argc - number of command line arguments
+ * param: char * argv[] - array of command line arguments
  */
 int main(int argc, char * argv[])
 { 
@@ -77,12 +77,12 @@ int main(int argc, char * argv[])
 /*
  * usage
  *
- * usages the command line arguments 
+ * parses the command line arguments 
  *
  * param: int argc - number of command line arguments
  * param: char * argv[] - command line arguments 
- * param: string & filename - set to the name of the text file to be 
- *                            used for input
+ * param: char * filename - the name of the input trace file
+ * para: struct Cache * cache - simulated cache data strucutre
  */
 void usage(int argc, char * argv[], char * filename, struct Cache * cache)
 {
@@ -124,6 +124,9 @@ void usage(int argc, char * argv[], char * filename, struct Cache * cache)
 /*
  * init
  *
+ * initializes the simulated cache data structure
+ *
+ * param: struct Cache * cache - simulated cache data structure
  */
 void init(struct Cache * cache)
 {
@@ -132,15 +135,17 @@ void init(struct Cache * cache)
     (*cache).misses = 0;
     (*cache).evictions=0;
 
-    (*cache).numSets = 1 << (*cache).sval;
-    (*cache).blockSize = 1 << (*cache).bval;
+    (*cache).numSets = 1 << (*cache).sval; //numSets = 2^s
+    (*cache).blockSize = 1 << (*cache).bval; //blockSize = 2^b
 
     int i, j;
 
+    //allocate tags 2d array
     (*cache).tags = (unsigned long **) malloc((*cache).numSets * sizeof(unsigned long *));
     for (i = 0; i < (*cache).numSets; i++)
         (*cache).tags[i] = (unsigned long *) malloc((*cache).eval * sizeof(unsigned long));
 
+    //initialize tags to -1
     for (i = 0; i < (*cache).numSets; i++)
         for (j = 0; j < (*cache).eval; j++)
             (*cache).tags[i][j] = -1;
@@ -148,8 +153,14 @@ void init(struct Cache * cache)
 
 /*
  * go
+ *
+ * reads, parses, and handles file data
+ *
+ * param: char * filename - trace file to be processed
+ * param: struct Cache * cache - simulated cache data structure
  */
 void go(char * filename, struct Cache * cache) {
+    //open file
     FILE * file;
     char buf[80];
     file = fopen(filename, "r");
@@ -158,80 +169,95 @@ void go(char * filename, struct Cache * cache) {
         exit(0);
     }
 
-    char inst, len;
+
+    //initialize variables
+    char inst;
     char status[13], mStat[13], addrStr[8] = ""; 
     unsigned long addr;
 
+    //read lines in file
     while (fgets(buf, 80, file) != NULL) {
         if (buf[0] == ' '){ 
-            strcpy(mStat, "");
-            sscanf(buf, " %c %s,%c", &inst, addrStr, &len);
-            addr = strtoul(addrStr, NULL, 16); 
-            strcpy(status, handleTag( cache, addr));
-            if (inst == 'M')
-                strcpy(mStat, handleTag(cache, addr));
-            if (vflag) {
-                printf("%c %s %c%s %s\n", inst, addrStr, len, status, mStat); 
+            strcpy(mStat, ""); //empty mstat
+            sscanf(buf, " %c %s", &inst, addrStr); //parse line
+            addr = strtoul(addrStr, NULL, 16); //convert address string to unsigned long
+            
+            strcpy(status, handleTag( cache, addr)); //copy return value into status
+            if (inst == 'M')    //if M, process a 2nd time
+                strcpy(mStat, handleTag(cache, addr)); //copy return value into mstat
+            
+            if (vflag) {    //if verbose flag was set, print verbose
+                printf("%c %s %s %s\n", inst, addrStr, status, mStat); 
             }
         }
     }
-    fclose(file);
+    fclose(file); //close file
 }
 
+
+/*
+ * handleTag
+ *
+ * proccesses an address contatined in a line of the trace file
+ * insert tag into proper set in least recently used order
+ *
+ * param: struct Cache * cache - simulated cache data structure
+ * param: unsigned long addr - address value to be processed
+ */
 char * handleTag(struct Cache * cache, unsigned long addr) {
-    int j, k;
+    
+    int j; 
     char totalBits = sizeof(unsigned long) * 8 ;
+    //get set bits
     unsigned long set = addr >> (*cache).bval << (totalBits - (*cache).sval) >> (totalBits - (*cache).sval);
+    //get tag bits
     unsigned long tag = addr >> ((*cache).sval + (*cache).bval);
+    
+    //access tag array
     for (j = 0; j < (*cache).eval; j++) { 
+        //if tag exists
         if ((*cache).tags[set][j] == tag) {  
-            (*cache).hits += 1;
+            insertTag(j, cache, set, tag); 
+            (*cache).hits += 1; 
             return "hit";
         }
+        //if tag doesnt exist, and array is not at capacity
         if ((*cache).tags[set][j] == -1) { 
-            insertTag(&j, &k, cache, set, tag);
-            (*cache).misses += 1;
+            insertTag(j, cache, set, tag);
+            (*cache).misses += 1; 
             return "miss";      
         }
     }
-    insertTag(&j, &k, cache, set, tag);
+    //if tag doesnt exist, and array is at capacity
+    insertTag(j, cache, set, tag);
     (*cache).misses += 1;
-    (*cache).evictions += 1;
+    (*cache).evictions += 1; 
     return "miss eviction"; 
 }
 
-
-/*
-   unsigned long getBitsSet(char startBit, char endBit, unsigned long addr) {
-   return addr >> startBit <<  (totalBits - endBit + startBit) >> (totalBits - endBit + startBit); 
-   }
-
-   unsigned long getBitsTag(char startBit, char endBit, char totalBits, unsigned long addr) {
-   return addr 
-   }
-   */
 /*
  * insertTag
+ *
+ * inserts new tag at position 0 and shifts existing tags to current position + 1
+ * sets an inactive tag, or evicts the least recently used tag
+ *
+ * param: int j - current tag index within a set
+ * param: struct Cache * cache - simulated cache data structure
+ * unsinged long set - set index for tags array
+ * unsinged long tag - tag to be inserted
  */
-void insertTag(int * j, int * k, struct Cache * cache, unsigned long set, unsigned long tag) {
-    *k = 0;
-    for (*k = *j; *k  >= 0; (*k)--) {
-        (*cache).tags[set][*k] = (*cache).tags[set][*k - 1];
+void insertTag(int j, struct Cache * cache, unsigned long set, unsigned long tag) {
+    int k;
+    for (k = j; k  >= 0; k--) {
+        (*cache).tags[set][k] = (*cache).tags[set][k - 1];
     }
     (*cache).tags[set][0] = tag; 
-
-}
-
-/*
- * printVerbose
- */
-void printVerbose() {
-
 }
 
 /*
  * printErr
  *
+ * prints an error upon failure to parse command line arguments
  */
 void printErr()
 {
@@ -247,4 +273,3 @@ void printErr()
     printf(" : \n");
     exit(0);
 }
-
